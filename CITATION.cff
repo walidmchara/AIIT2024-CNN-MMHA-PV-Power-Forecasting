@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "Please cite the associated IEEE AIIT conference article when using this research implementation."
+title: "A Photovoltaic Power Prediction Model for Solar Electric Vehicles Using Convolutional Neural Networks and Masked Multi-Head Attention Mechanism"
+type: conference-paper
+authors:
+  - family-names: Mchara
+    given-names: Walid
+  - family-names: Manai
+    given-names: Lazhar
+  - family-names: Khalfa
+    given-names: Mohamed Abdellatif
+  - family-names: Koubaa
+    given-names: Anis
+  - family-names: Raissi
+    given-names: Monia
+  - family-names: Hannachi
+    given-names: Salah
+doi: 10.1109/AIIT63112.2025.11082930
+year: 2025

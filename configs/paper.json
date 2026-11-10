@@ -1,0 +1,34 @@
+{
+  "input": {
+    "features": ["global_irradiance", "solar_height", "ambient_temperature", "wind_speed", "relative_humidity", "precipitation", "cloud_cover", "atmospheric_pressure", "wind_direction"],
+    "target": "pv_power",
+    "lookback_hours": 24,
+    "time_resolution": "hourly"
+  },
+  "model": {
+    "spatial_input_features": 9,
+    "spatial_output": 49,
+    "spatial_grid": [7,7],
+    "conv_channels": [128,256,10],
+    "conv_kernels": [3,3,1],
+    "conv_strides": [2,2,1],
+    "model_dim": 100,
+    "attention_heads": 20,
+    "ff_hidden": 50,
+    "output_dim": 1,
+    "fc_means_regimes": 4
+  },
+  "training": {
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "epochs": 1000,
+    "early_stopping_patience": 60,
+    "criterion": "MSE"
+  },
+  "evaluation": {"mape_min_power": 0.01},
+  "notes": {
+    "from_paper_table_1": "spatial mapping 9x49; 3 convolutions 128,256,10; 3x3/3x3/1x1 kernels; stride 2 first two; d=100; 20 heads; FF 100-50-100; batch 32; LR .001; 1000 epochs",
+    "not_specified_in_paper": "24-hour lookback, causal chronological 64/16/20 train/val/test choice, 0.01 power-unit MAPE exclusion, patience 60",
+    "source": "AIIT 2025, DOI 10.1109/AIIT63112.2025.11082930"
+  }
+}
