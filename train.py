@@ -5,6 +5,7 @@ published paper has not been reproduced here without the original Borj Cedria da
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import math
 import random
@@ -18,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent/'src'))
 from aiit_cnn_mmha import CNNMaskedAttention, DEFAULT_FEATURES, prepare, load_frame
 from aiit_cnn_mmha.data import make_synthetic
 from aiit_cnn_mmha.baselines import make_baseline
+from training_recovery import EpochCheckpoint
 
 
 def metrics(y:np.ndarray, pred:np.ndarray, min_abs:float=0.01)->dict:
@@ -37,6 +39,8 @@ def main():
     parser.add_argument('--smoke',action='store_true',help='Synthetic pipeline sanity check only')
     parser.add_argument('--config',default='configs/paper.json')
     parser.add_argument('--epochs',type=int)
+    parser.add_argument('--checkpoint-dir',help='Persistent recovery path')
+    parser.add_argument('--resume',action='store_true')
     parser.add_argument('--lookback',type=int)
     parser.add_argument('--out',default='outputs/experiment')
     parser.add_argument('--time-col',default='timestamp')
@@ -71,8 +75,21 @@ def main():
     train=loader(ds.train,True);val=loader(ds.val);test=loader(ds.test)
     opt=torch.optim.Adam(model.parameters(),lr=cfg['training']['learning_rate'])
     loss_fn=torch.nn.MSELoss()
+    source_sig=(hashlib.sha256(Path(args.csv).read_bytes()).hexdigest()
+                if args.csv else f"synthetic_seed_{args.seed}")
+    recovery=EpochCheckpoint(args.checkpoint_dir or Path(args.out)/'recovery',{
+        "config":cfg,"source_sha256":source_sig,"features":features,
+        "architecture":args.architecture,"lookback":lookback,
+        "epochs":epochs,"seed":args.seed,"target":args.target,"time_col":args.time_col,
+    })
+    components={"model":model,"optimizer":opt}
     best=math.inf;state=None;history=[];patience=cfg['training']['early_stopping_patience'];stale=0
-    for epoch in range(1,epochs+1):
+    start_epoch=0
+    if args.resume:
+        loaded=recovery.restore(components,device=device)
+        start_epoch=loaded["epoch"];best=loaded["best"];state=loaded["best_state"]
+        history=loaded["history"];stale=loaded["stale"]
+    for epoch in range(start_epoch+1,epochs+1):
         model.train();train_total=0.0;num=0
         for x,y in train:
             x=x.to(device);y=y.to(device)
@@ -91,7 +108,9 @@ def main():
             best=v_loss;state={k:vv.detach().cpu().clone() for k,vv in model.state_dict().items()};stale=0
         else:
             stale+=1
-            if stale>=patience:break
+        recovery.save(epoch,components,{"best":best,"best_state":state,"history":history,"stale":stale})
+        if stale>=patience:break
+    if state is None:raise RuntimeError("No validation checkpoint")
     model.load_state_dict(state)
     model.eval();scaled=[]
     with torch.no_grad():
