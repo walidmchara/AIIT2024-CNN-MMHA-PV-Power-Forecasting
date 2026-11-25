@@ -16,11 +16,20 @@ The study uses hourly weather observations from Borj Cedria, Tunisia (2015–202
 
 ```bash
 python -m venv .venv
-pip install -r requirements.txt
+# Linux/macOS:
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
-For an end-to-end software check on explicitly synthetic signals:
+Train end-to-end immediately on a clearly labeled synthetic demonstration (30 days):
+
+```bash
+python train.py --demo --epochs 3 --out outputs/demo
+```
+
+This verifies the training/evaluation workflow but is **not** a substitute for measured PV data and cannot reproduce the paper's results. For a fast software-only check:
 
 ```bash
 python train.py --smoke --epochs 1 --out outputs/smoke
@@ -32,7 +41,7 @@ To fit and evaluate the model using measured hourly photovoltaic data:
 python train.py --csv path/to/hourly_pv.csv --epochs 1000 --out outputs/borj_cedria
 ```
 
-Training outputs include a model checkpoint, epoch history, timestamp-aligned test predictions, overall metrics and four weather-regime diagnostics. The five comparison families (MLP, LSTM, BiLSTM, CNN–LSTM, CNN–BiLSTM) are available through `--architecture`, while `cnn_mmha` is the default. Baseline hyperparameters are reference choices and require a separate fairness audit against the conference experiments. Visualize predictions with `python scripts/plot_forecasts.py outputs/borj_cedria`.
+Training outputs include a model checkpoint, epoch history, timestamp-aligned test predictions, overall metrics and weather-regime diagnostics. The five comparison families (MLP, LSTM, BiLSTM, CNN–LSTM, CNN–BiLSTM) are available through `--architecture`, while `cnn_mmha` is the default. Baseline hyperparameters are reference choices and require a separate fairness audit against the conference experiments. Visualize predictions with `python scripts/plot_forecasts.py outputs/borj_cedria`.
 
 ## Reproducibility
 

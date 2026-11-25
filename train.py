@@ -37,7 +37,8 @@ def main():
     parser=argparse.ArgumentParser(description='CNN–MMHA PV power forecasting')
     parser.add_argument('--csv',help='Hourly PV measurements, columns documented in data/SCHEMA.md')
     parser.add_argument('--smoke',action='store_true',help='Synthetic pipeline sanity check only')
-    parser.add_argument('--config',default='configs/paper.json')
+    parser.add_argument('--demo',action='store_true',help='Train on 30 days of synthetic data; not paper results')
+    parser.add_argument('--config',help='JSON configuration (defaults to configs/paper.json in the repository)')
     parser.add_argument('--epochs',type=int)
     parser.add_argument('--checkpoint-dir',help='Persistent recovery path')
     parser.add_argument('--resume',action='store_true')
@@ -50,18 +51,26 @@ def main():
     parser.add_argument('--cpu',action='store_true')
     parser.add_argument('--architecture',choices=['cnn_mmha','mlp','lstm','bilstm','cnn_lstm','cnn_bilstm'],default='cnn_mmha')
     args=parser.parse_args()
-    if bool(args.csv)==bool(args.smoke):parser.error('select exactly one of --csv or --smoke')
-    cfg=json.loads(Path(args.config).read_text(encoding='utf-8'))
-    g=cfg['model'];features=args.features.split(',') if args.features else cfg['input']['features']
+    if sum((bool(args.csv),args.smoke,args.demo))!=1:
+        parser.error('select exactly one of --csv, --smoke or --demo')
+    project_root=Path(__file__).resolve().parent
+    config_path=Path(args.config) if args.config else project_root/'configs/paper.json'
+    cfg=json.loads(config_path.read_text(encoding='utf-8'))
+    g=cfg['model']
+    features=[feature.strip() for feature in args.features.split(',')] if args.features else cfg['input']['features']
     if len(features)!=9:parser.error('9 predictor columns are required by the 9×49 projection')
     random.seed(args.seed);np.random.seed(args.seed);torch.manual_seed(args.seed)
     torch.set_num_threads(min(2,torch.get_num_threads()))
     epochs=args.epochs if args.epochs is not None else (1 if args.smoke else cfg['training']['epochs'])
     if epochs<1:parser.error('epochs must be >= 1')
-    lookback=args.lookback or cfg['input']['lookback_hours']
-    if args.smoke:
-        df=make_synthetic(n=160,seed=args.seed)
-        print('Running a synthetic smoke test; its metrics are not publication results.')
+    lookback=args.lookback if args.lookback is not None else cfg['input']['lookback_hours']
+    if lookback<1:parser.error('lookback must be >= 1')
+    if args.smoke or args.demo:
+        df=make_synthetic(n=160 if args.smoke else 24*30,seed=args.seed)
+        if args.smoke:
+            print('Running a synthetic smoke test; its metrics are not publication results.')
+        else:
+            print('Training on 30 days of synthetic data; this is a software demonstration, not paper data.')
     else:df=load_frame(args.csv,features,time_col=args.time_col,target=args.target)
     ds=prepare(df,features=features,target=args.target,time_col=args.time_col,
                lookback=lookback,seed=args.seed)
@@ -76,7 +85,7 @@ def main():
     opt=torch.optim.Adam(model.parameters(),lr=cfg['training']['learning_rate'])
     loss_fn=torch.nn.MSELoss()
     source_sig=(hashlib.sha256(Path(args.csv).read_bytes()).hexdigest()
-                if args.csv else f"synthetic_seed_{args.seed}")
+                if args.csv else f"synthetic_{'smoke' if args.smoke else 'demo'}_seed_{args.seed}")
     recovery=EpochCheckpoint(args.checkpoint_dir or Path(args.out)/'recovery',{
         "config":cfg,"source_sha256":source_sig,"features":features,
         "architecture":args.architecture,"lookback":lookback,
@@ -122,7 +131,8 @@ def main():
     torch.save({'state_dict':state,'config':cfg,'features':features,'lookback':lookback,'architecture':args.architecture},out/'checkpoint.pt')
     pd.DataFrame(history).to_csv(out/'training_history.csv',index=False)
     pd.DataFrame({'timestamp':ds.timestamps[idx],'actual_PV':actual,'prediction_PV':pred,'regime_id':ds.regime[idx]}).to_csv(out/'test_predictions.csv',index=False)
-    report={'status':'synthetic functional test' if args.smoke else 'evaluation on supplied measured CSV',
+    report={'status':('synthetic functional test' if args.smoke else 'synthetic demonstration; not paper data')
+            if args.smoke or args.demo else 'evaluation on supplied measured CSV',
        'paper_doi':'10.1109/AIIT63112.2025.11082930',
        'architecture':args.architecture,
        'input_records':len(df),'split':{'train':int(ds.train.sum()),'validation':int(ds.val.sum()),'test':int(ds.test.sum())},

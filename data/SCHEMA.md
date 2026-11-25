@@ -4,6 +4,12 @@ The study uses hourly meteorological measurements collected at the Energy Resear
 
 The training CSV uses a time-ordered `timestamp` column, nine numerical predictors and `pv_power` as the numerical target.
 
+Required CSV header (columns may be reordered when using `--features`):
+
+```csv
+timestamp,global_irradiance,solar_height,ambient_temperature,wind_speed,relative_humidity,precipitation,cloud_cover,atmospheric_pressure,wind_direction,pv_power
+```
+
 | Column | Measurement | Units |
 | --- | --- | --- |
 | `timestamp` | Observation time | ISO 8601 date-time |

@@ -81,6 +81,7 @@ def load_frame(path: str|Path, features: list[str], time_col: str='timestamp',ta
 def prepare(frame: pd.DataFrame, features: list[str]|None=None, target: str=TARGET,
             lookback: int=24, seed: int=42, time_col: str='timestamp') -> ForecastDataset:
     features=features or DEFAULT_FEATURES
+    if lookback < 1: raise ValueError('lookback must be >= 1')
     if any(c not in frame for c in [*features,target]): raise ValueError('dataset missing configured features/target')
     if len(frame)<max(100,lookback+50): raise ValueError('dataset too short for meaningful holdouts')
     # Chronological 64/16/20 split: 80/20 development/test, 20% of development reserved for validation.
