@@ -24,7 +24,9 @@ be mounted in Colab **before** running the command. On RunPod, replace the
 path with the persistent Pod volume. A checkpoint is not guaranteed to survive
 if it is stored only in the temporary Colab filesystem.
 
-**Run-specific note:** Requires actual hourly PV data; synthetic --smoke is only a software check.
+**Run-specific note:** Measured-data training requires an hourly PV CSV. `--smoke` and
+`--demo` use synthetic data for software checks/demonstration only; neither produces
+paper results.
 
 ### Boundaries
 

@@ -30,6 +30,11 @@ def test_missing_target_is_rejected():
     with pytest.raises(ValueError,match='target contains missing'):
         prepare(d)
 
+def test_nonpositive_lookback_is_rejected():
+    import pytest
+    with pytest.raises(ValueError,match='lookback must be >= 1'):
+        prepare(make_synthetic(n=180),lookback=0)
+
 def test_irregular_time_axis_is_rejected():
     import pytest
     from aiit_cnn_mmha.data import load_frame
